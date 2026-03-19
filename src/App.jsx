@@ -14,7 +14,7 @@ const COLORS = {
   redVelvet: 'linear-gradient(135deg, #8B1A1A 0%, #050505 100%)',
 };
 
-const MAIN_APP_URL = "https://elitevip.me/claim";
+const MAIN_APP_URL = "https://elitereply.com/claim";
 
 const redirectToClaim = (handle) => {
   const sanitizedHandle = handle.trim().replace(/[^a-zA-Z ]/g, '');
