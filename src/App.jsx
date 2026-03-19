@@ -14,11 +14,42 @@ const COLORS = {
   redVelvet: 'linear-gradient(135deg, #8B1A1A 0%, #050505 100%)',
 };
 
-const MAIN_APP_URL = "https://elitereply.com/claim";
+const MAIN_APP_URL = "https://elitevip.me/claim";
 
 const redirectToClaim = (handle) => {
-  const sanitizedHandle = handle.trim().replace(/[^a-zA-Z0-9_]/g, '');
-  window.location.href = `${MAIN_APP_URL}?handle=${sanitizedHandle}`;
+  const sanitizedHandle = handle.trim().replace(/[^a-zA-Z ]/g, '');
+  window.location.href = `${MAIN_APP_URL}?handle=${encodeURIComponent(sanitizedHandle)}`;
+};
+
+// Validate handle: must be first name + last name (two words), letters only, min 8 total chars, no numbers/special chars
+const validateHandle = (val) => {
+  const trimmed = val.trim();
+  if (!trimmed) return { valid: false, error: '' };
+
+  // No numbers or special characters allowed
+  if (/[^a-zA-Z ]/.test(trimmed)) {
+    return { valid: false, error: 'Only letters are allowed — no numbers or special characters.' };
+  }
+
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+
+  // Must have exactly two words (first name + last name)
+  if (parts.length < 2) {
+    return { valid: false, error: 'Please enter both your first and last name.' };
+  }
+
+  // Each word must be at least 2 characters
+  if (parts.some(p => p.length < 2)) {
+    return { valid: false, error: 'Each name must be at least 2 characters.' };
+  }
+
+  // Total combined length (without space) must be at least 8
+  const combined = parts.join('');
+  if (combined.length < 8) {
+    return { valid: false, error: 'Your full name must be at least 8 characters total.' };
+  }
+
+  return { valid: true, error: '' };
 };
 
 const Button = ({ children, variant = 'primary', className = '', ...props }) => {
@@ -35,36 +66,77 @@ const Button = ({ children, variant = 'primary', className = '', ...props }) => 
   );
 };
 
-const HandleInput = ({ placeholder = "yourname", onClaim }) => {
+const HandleInput = ({ placeholder = "firstname lastname", onClaim }) => {
   const [val, setVal] = useState("");
+  const [error, setError] = useState("");
+  const [touched, setTouched] = useState(false);
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && val.length > 0) {
-      onClaim(val);
+  const handleChange = (e) => {
+    const newVal = e.target.value;
+    setVal(newVal);
+    if (touched) {
+      const { error: err } = validateHandle(newVal);
+      setError(err);
     }
   };
 
+  const handleBlur = () => {
+    setTouched(true);
+    const { error: err } = validateHandle(val);
+    setError(err);
+  };
+
+  const handleSubmit = () => {
+    setTouched(true);
+    const { valid, error: err } = validateHandle(val);
+    if (!valid) {
+      setError(err || 'Please enter your first and last name.');
+      return;
+    }
+    setError("");
+    onClaim(val);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSubmit();
+    }
+  };
+
+  const { valid } = validateHandle(val);
+
   return (
-    <div className="relative group w-full max-w-xl mx-auto">
-      <div className="absolute -inset-1 bg-gradient-to-r from-[#38bfa1] to-emerald-500 rounded-[2rem] blur opacity-25 group-focus-within:opacity-60 transition duration-1000"></div>
-      <div className="relative flex items-center bg-[#111] border border-white/10 rounded-[1.8rem] p-2 pr-3 pl-6 shadow-2xl">
-        <span className="text-zinc-500 font-medium text-lg md:text-xl pr-1 select-none">elitereply.com/</span>
-        <input
-          type="text"
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          className="bg-transparent border-none outline-none text-white text-lg md:text-xl font-bold w-full placeholder:text-zinc-700"
-        />
-        <button
-          onClick={() => val.length > 0 && onClaim(val)}
-          className="bg-[#38bfa1] text-black p-3 md:px-6 md:py-3 rounded-[1.2rem] font-black flex items-center gap-2 hover:bg-white transition-all active:scale-95 shadow-lg shrink-0"
-        >
-          <span className="hidden md:inline">Claim Handle</span>
-          <ArrowRight className="w-5 h-5" />
-        </button>
+    <div className="w-full max-w-xl mx-auto">
+      <div className="relative group">
+        <div className={`absolute -inset-1 bg-gradient-to-r from-[#38bfa1] to-emerald-500 rounded-[2rem] blur opacity-25 group-focus-within:opacity-60 transition duration-1000 ${error ? 'from-red-500 to-red-400' : ''}`}></div>
+        <div className={`relative flex items-center bg-[#111] border rounded-[1.8rem] p-2 pr-3 pl-6 shadow-2xl ${error ? 'border-red-500/50' : 'border-white/10'}`}>
+          <span className="text-zinc-500 font-medium text-lg md:text-xl pr-1 select-none whitespace-nowrap">elitevip.me/</span>
+          <input
+            type="text"
+            value={val}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            className="bg-transparent border-none outline-none text-white text-lg md:text-xl font-bold w-full placeholder:text-zinc-700"
+          />
+          <button
+            onClick={handleSubmit}
+            className="bg-[#38bfa1] text-black p-3 md:px-6 md:py-3 rounded-[1.2rem] font-black flex items-center gap-2 hover:bg-white transition-all active:scale-95 shadow-lg shrink-0"
+          >
+            <span className="hidden md:inline">Claim Handle</span>
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        </div>
       </div>
+      {error && (
+        <p className="mt-3 text-sm text-red-400 text-center font-medium">{error}</p>
+      )}
+      {!error && val && valid && (
+        <p className="mt-3 text-sm text-[#38bfa1] text-center font-medium">
+          ✓ elitevip.me/{val.trim().split(/\s+/).join('')}
+        </p>
+      )}
     </div>
   );
 };
@@ -470,4 +542,4 @@ export default function App() {
       `}</style>
     </div>
   );
-}
+                      }
